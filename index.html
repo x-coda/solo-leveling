@@ -5,14 +5,98 @@
 <title>SYSTEM</title>
 <style>
   body { background:#050a1a; color:#9fd4ff; font-family:Arial,sans-serif; margin:0; padding:20px; }
-  .window { border:2px solid #2a8cff; box-shadow:0 0 20px #2a8cff; padding:20px; border-radius:8px; }
-  h1 { text-align:center; letter-spacing:4px; }
+  .window { border:2px solid #2a8cff; box-shadow:0 0 20px #2a8cff; padding:20px; border-radius:8px; margin-bottom:20px; }
+  h1, h2 { text-align:center; letter-spacing:4px; margin-top:0; }
+  .bar { background:#0a1633; border:1px solid #2a8cff; height:16px; border-radius:8px; overflow:hidden; margin-top:8px; }
+  #fill { background:#2a8cff; height:100%; width:0%; }
+  input { width:100%; box-sizing:border-box; padding:10px; background:#0a1633; color:#9fd4ff; border:1px solid #2a8cff; border-radius:6px; font-size:16px; }
+  button { background:#2a8cff; color:#050a1a; border:none; padding:10px 14px; border-radius:6px; font-size:16px; font-weight:bold; margin-top:10px; }
+  .quest { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #123a6b; padding:10px 0; }
+  .done span { text-decoration:line-through; opacity:0.5; }
 </style>
 </head>
 <body>
+
   <div class="window">
     <h1>SYSTEM</h1>
-    <p>Welcome, Player.</p>
+    <p>Level: <b id="level">1</b></p>
+    <p>XP: <b id="xp">0</b> / <b id="need">100</b></p>
+    <div class="bar"><div id="fill"></div></div>
   </div>
+
+  <div class="window">
+    <h2>DAILY QUESTS</h2>
+    <input id="newQuest" placeholder="Type a quest, e.g. 20 push-ups">
+    <button onclick="addQuest()">Add Quest</button>
+    <div id="list"></div>
+  </div>
+
+<script>
+  var level = 1;
+  var xp = 0;
+  var quests = [];
+
+  try {
+    var saved = JSON.parse(localStorage.getItem("system-data"));
+    if (saved) { level = saved.level; xp = saved.xp; quests = saved.quests; }
+  } catch (e) {}
+
+  function save() {
+    try {
+      localStorage.setItem("system-data", JSON.stringify({level: level, xp: xp, quests: quests}));
+    } catch (e) {}
+  }
+
+  function addQuest() {
+    var box = document.getElementById("newQuest");
+    var text = box.value.trim();
+    if (text === "") return;
+    quests.push({text: text, done: false});
+    box.value = "";
+    save();
+    draw();
+  }
+
+  function completeQuest(i) {
+    if (quests[i].done) return;
+    quests[i].done = true;
+    xp = xp + 20;
+    while (xp >= level * 100) {
+      xp = xp - level * 100;
+      level = level + 1;
+      alert("LEVEL UP! You are now Level " + level);
+    }
+    save();
+    draw();
+  }
+
+  function removeQuest(i) {
+    quests.splice(i, 1);
+    save();
+    draw();
+  }
+
+  function draw() {
+    var need = level * 100;
+    document.getElementById("level").innerText = level;
+    document.getElementById("xp").innerText = xp;
+    document.getElementById("need").innerText = need;
+    document.getElementById("fill").style.width = (xp / need * 100) + "%";
+
+    var html = "";
+    for (var i = 0; i < quests.length; i++) {
+      var q = quests[i];
+      html += '<div class="quest ' + (q.done ? "done" : "") + '">';
+      html += '<span>' + q.text + '</span>';
+      html += '<div>';
+      if (!q.done) html += '<button onclick="completeQuest(' + i + ')">Done</button> ';
+      html += '<button onclick="removeQuest(' + i + ')">X</button>';
+      html += '</div></div>';
+    }
+    document.getElementById("list").innerHTML = html;
+  }
+
+  draw();
+</script>
 </body>
 </html>
