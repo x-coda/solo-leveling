@@ -1,0 +1,114 @@
+body {
+  background: #050a1a;
+  color: #9fd4ff;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.window {
+  border: 2px solid #2a8cff;
+  box-shadow: 0 0 20px #2a8cff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+h1, h2 {
+  text-align: center;
+  letter-spacing: 4px;
+  margin-top: 0;
+}
+
+.bar {
+  background: #0a1633;
+  border: 1px solid #2a8cff;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+#fill {
+  background: #2a8cff;
+  height: 100%;
+  width: 0%;
+  transition: width 0.4s;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.stats div {
+  border: 1px solid #123a6b;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+input, select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #0a1633;
+  color: #9fd4ff;
+  border: 1px solid #2a8cff;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+button {
+  background: #2a8cff;
+  color: #050a1a;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+button.danger {
+  background: #8b1a1a;
+  color: #ffd6d6;
+  width: 100%;
+}
+
+.quest {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #123a6b;
+  padding: 10px 0;
+  gap: 10px;
+}
+
+.quest small {
+  display: block;
+  opacity: 0.6;
+}
+
+.done span {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.notice {
+  border: 2px solid #ff3b3b;
+  box-shadow: 0 0 20px #ff3b3b;
+  color: #ffb3b3;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.notice.good {
+  border-color: #2a8cff;
+  box-shadow: 0 0 20px #2a8cff;
+  color: #9fd4ff;
+}
