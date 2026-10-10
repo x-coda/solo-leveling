@@ -1,0 +1,8 @@
+{
+  "name": "SYSTEM",
+  "short_name": "SYSTEM",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050a1a",
+  "theme_color": "#050a1a"
+}
