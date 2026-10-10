@@ -1,21 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="System">
+<meta name="theme-color" content="#050a1a">
+<link rel="manifest" href="manifest.json">
 <title>SYSTEM</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div id="notice" class="notice" style="display:none;"></div>
+  <div id="notices" class="notices"></div>
+
+  <div id="levelup" class="levelup" onclick="closeLevelUp()">
+    <div class="levelup-box">
+      <h1>LEVEL UP</h1>
+      <p class="big" id="luLevel"></p>
+      <p id="luRank"></p>
+      <small>Tap to continue</small>
+    </div>
+  </div>
 
   <div class="window">
     <h1>SYSTEM</h1>
+    <p class="titleline" id="titleLine"></p>
     <p>Player Rank: <b id="rank">E-Rank</b></p>
     <p>Level: <b id="level">1</b></p>
     <p>XP: <b id="xp">0</b> / <b id="need">100</b></p>
-    <div class="bar"><div id="fill"></div></div>
+    <div class="bar" id="bar"><div id="fill"></div></div>
     <p>Streak: <b id="streak">0</b> day(s)</p>
   </div>
 
@@ -43,6 +59,40 @@
   </div>
 
   <div class="window">
+    <h2>GATES</h2>
+    <p class="hint">Big one-time challenges. Harder gates give more XP and +3 to a stat.</p>
+    <input id="newGate" placeholder="e.g. Run 5km">
+    <select id="gateRank">
+      <option value="E">E-Rank Gate (+50 XP)</option>
+      <option value="D">D-Rank Gate (+100 XP)</option>
+      <option value="C">C-Rank Gate (+150 XP)</option>
+      <option value="B">B-Rank Gate (+250 XP)</option>
+      <option value="A">A-Rank Gate (+400 XP)</option>
+      <option value="S">S-Rank Gate (+600 XP)</option>
+    </select>
+    <select id="gateStat">
+      <option value="STR">Strength (STR)</option>
+      <option value="AGI">Agility (AGI)</option>
+      <option value="INT">Intelligence (INT)</option>
+      <option value="VIT">Vitality (VIT)</option>
+    </select>
+    <button onclick="addGate()">Open Gate</button>
+    <div id="gateList"></div>
+    <p class="hint">Gates cleared: <b id="gatesCleared">0</b></p>
+  </div>
+
+  <details class="window">
+    <summary>TITLES (<span id="titleCount">0</span>)</summary>
+    <div id="titleList"></div>
+  </details>
+
+  <details class="window">
+    <summary>SHADOW ARMY (<span id="shadowCount">0</span>)</summary>
+    <div id="shadowList"></div>
+  </details>
+
+  <div class="window">
+    <button id="soundBtn" onclick="toggleSound()">Sound: ON</button>
     <button class="danger" onclick="resetAll()">Reset Everything</button>
   </div>
 
