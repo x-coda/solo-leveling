@@ -1,3 +1,21 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+var firebaseConfig = {
+  apiKey: "AIzaSyBFd3-V9Z5ZUoY88stkrKDDogRw8vS1HtE",
+  authDomain: "solo-leveling-65764.firebaseapp.com",
+  projectId: "solo-leveling-65764",
+  storageBucket: "solo-leveling-65764.firebasestorage.app",
+  messagingSenderId: "506804094047",
+  appId: "1:506804094047:web:6932fe9cf26697811607ea"
+};
+
+var app = initializeApp(firebaseConfig);
+var auth = getAuth(app);
+var db = getFirestore(app);
+
+var MAX_ACTIVE = 10;
 var GATE_XP = { E: 50, D: 100, C: 150, B: 250, A: 400, S: 600 };
 var STAT_NAMES = ["STR", "AGI", "INT", "VIT"];
 
@@ -25,52 +43,156 @@ var TITLES = [
   { id: "l25", name: "Shadow Monarch", desc: "Reach Level 25", test: function () { return data.level >= 25; } }
 ];
 
-var data = {
-  level: 1,
-  xp: 0,
-  stats: { STR: 0, AGI: 0, INT: 0, VIT: 0 },
-  quests: [],
-  gates: [],
-  gatesCleared: 0,
-  totalQuests: 0,
-  titles: [],
-  equipped: "",
-  lastDate: "",
-  streak: 0,
-  sound: true
-};
+function defaultData() {
+  return {
+    level: 1,
+    xp: 0,
+    stats: { STR: 0, AGI: 0, INT: 0, VIT: 0 },
+    active: [],
+    completed: {},
+    totalQuests: 0,
+    gates: [],
+    gatesDone: [],
+    gatesCleared: 0,
+    titles: [],
+    equipped: "",
+    lastDate: "",
+    streak: 0,
+    sound: true
+  };
+}
 
-/* ---------- saving and loading ---------- */
+var data = defaultData();
+var user = null;
+var loaded = false;
+var filter = "ALL";
+var saveTimer = null;
+
+/* ---------- small helpers ---------- */
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function setText(id, text) {
+  $(id).innerText = text;
+}
 
 function today() {
   return new Date().toDateString();
 }
 
-function load() {
-  try {
-    var saved = JSON.parse(localStorage.getItem("system-data"));
-    if (saved) {
-      for (var k in saved) { data[k] = saved[k]; }
-    }
-  } catch (e) {}
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
-  if (!data.stats) data.stats = {};
+function showScreen(name) {
+  var ids = ["loading", "loginScreen", "app"];
+  for (var i = 0; i < ids.length; i++) {
+    $(ids[i]).style.display = (ids[i] === name) ? "block" : "none";
+  }
+}
+
+/* ---------- loading and saving (online) ---------- */
+
+function normalize() {
+  var base = defaultData();
+  for (var k in base) {
+    if (data[k] === undefined || data[k] === null) data[k] = base[k];
+  }
   for (var n = 0; n < STAT_NAMES.length; n++) {
     if (!data.stats[STAT_NAMES[n]]) data.stats[STAT_NAMES[n]] = 0;
   }
-  if (!data.quests) data.quests = [];
-  if (!data.gates) data.gates = [];
-  if (!data.titles) data.titles = [];
-  for (var i = 0; i < data.quests.length; i++) {
-    if (!data.quests[i].stat) data.quests[i].stat = "INT";
+  if (!Array.isArray(data.active)) data.active = [];
+  if (!Array.isArray(data.gates)) data.gates = [];
+  if (!Array.isArray(data.gatesDone)) data.gatesDone = [];
+  if (!Array.isArray(data.titles)) data.titles = [];
+}
+
+function importOld() {
+  try {
+    var old = JSON.parse(localStorage.getItem("system-data"));
+    if (old && old.level) {
+      var keep = ["level", "xp", "stats", "streak", "titles", "equipped", "totalQuests", "gatesCleared", "sound", "lastDate"];
+      for (var i = 0; i < keep.length; i++) {
+        if (old[keep[i]] !== undefined) data[keep[i]] = old[keep[i]];
+      }
+    }
+  } catch (e) {}
+}
+
+async function loadData() {
+  data = defaultData();
+  var snap = await getDoc(doc(db, "users", user.uid));
+  if (snap.exists()) {
+    var saved = snap.data();
+    for (var k in saved) { data[k] = saved[k]; }
+  } else {
+    importOld();
+  }
+  normalize();
+}
+
+async function flush() {
+  clearTimeout(saveTimer);
+  if (!user || !loaded) return;
+  try {
+    await setDoc(doc(db, "users", user.uid), JSON.parse(JSON.stringify(data)));
+    setText("saveStatus", "Saved online");
+  } catch (e) {
+    setText("saveStatus", "Save failed. Check your internet.");
   }
 }
 
 function save() {
-  try {
-    localStorage.setItem("system-data", JSON.stringify(data));
-  } catch (e) {}
+  if (!user || !loaded) return;
+  setText("saveStatus", "Saving...");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 500);
 }
+
+/* ---------- login ---------- */
+
+async function signIn() {
+  setText("loginError", "");
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return;
+    setText("loginError", "Login failed (" + (e.code || e.message) + "). If you opened this from the Home Screen, open the site in Safari to log in.");
+  }
+}
+
+async function doSignOut() {
+  await flush();
+  await signOut(auth);
+}
+
+onAuthStateChanged(auth, async function (u) {
+  if (u) {
+    user = u;
+    loaded = false;
+    showScreen("loading");
+    try {
+      await loadData();
+      loaded = true;
+      dailyCheck();
+      checkTitles();
+      await flush();
+      showScreen("app");
+      draw();
+    } catch (e) {
+      setText("loginError", "Could not load your data (" + (e.code || e.message) + "). Check the Firestore settings.");
+      loaded = false;
+      await signOut(auth);
+    }
+  } else {
+    user = null;
+    loaded = false;
+    data = defaultData();
+    showScreen("loginScreen");
+  }
+});
 
 /* ---------- sound ---------- */
 
@@ -135,7 +257,7 @@ function toggleSound() {
 /* ---------- notices and effects ---------- */
 
 function notify(text, good) {
-  var box = document.getElementById("notices");
+  var box = $("notices");
   var d = document.createElement("div");
   d.className = good ? "notice good" : "notice";
   d.innerText = text;
@@ -149,19 +271,19 @@ function notify(text, good) {
 }
 
 function pulseBar() {
-  var bar = document.getElementById("bar");
+  var bar = $("bar");
   bar.classList.add("pulse");
   setTimeout(function () { bar.classList.remove("pulse"); }, 700);
 }
 
 function showLevelUp() {
-  document.getElementById("luLevel").innerText = "Level " + data.level;
-  document.getElementById("luRank").innerText = getRank();
-  document.getElementById("levelup").style.display = "flex";
+  setText("luLevel", "Level " + data.level);
+  setText("luRank", getRank());
+  $("levelup").style.display = "flex";
 }
 
 function closeLevelUp() {
-  document.getElementById("levelup").style.display = "none";
+  $("levelup").style.display = "none";
 }
 
 /* ---------- game logic ---------- */
@@ -174,10 +296,6 @@ function getRank() {
   if (l >= 10) return "C-Rank";
   if (l >= 5) return "D-Rank";
   return "E-Rank";
-}
-
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function addXP(amount) {
@@ -227,12 +345,12 @@ function dailyCheck() {
   }
   if (data.lastDate === t) return;
 
-  var total = data.quests.length;
+  var total = data.active.length;
   var missed = 0;
-  for (var i = 0; i < data.quests.length; i++) {
-    if (!data.quests[i].done) missed++;
-    data.quests[i].done = false;
+  for (var i = 0; i < data.active.length; i++) {
+    if (!data.active[i].done) missed++;
   }
+  data.active = [];
 
   if (total > 0 && missed > 0) {
     var loss = missed * 15;
@@ -247,24 +365,43 @@ function dailyCheck() {
   data.lastDate = t;
 }
 
-/* ---------- quests ---------- */
+/* ---------- quests (accept and finish only) ---------- */
 
-function addQuest() {
-  var box = document.getElementById("newQuest");
-  var text = box.value.trim();
-  if (text === "") return;
-  var stat = document.getElementById("questStat").value;
-  data.quests.push({ text: text, stat: stat, done: false });
-  box.value = "";
+function findActive(id) {
+  for (var i = 0; i < data.active.length; i++) {
+    if (data.active[i].id === id) return i;
+  }
+  return -1;
+}
+
+function acceptQuest(id) {
+  if (!QUEST_MAP[id]) return;
+  if (findActive(id) !== -1) return;
+  if (data.active.length >= MAX_ACTIVE) {
+    notify("You can only accept " + MAX_ACTIVE + " quests per day.", false);
+    return;
+  }
+  data.active.push({ id: id, done: false });
   save();
   draw();
 }
 
-function completeQuest(i) {
-  var q = data.quests[i];
-  if (!q || q.done) return;
-  q.done = true;
+function dropQuest(id) {
+  var i = findActive(id);
+  if (i === -1 || data.active[i].done) return;
+  data.active.splice(i, 1);
+  save();
+  draw();
+}
+
+function completeQuest(id) {
+  var i = findActive(id);
+  if (i === -1 || data.active[i].done) return;
+  var q = QUEST_MAP[id];
+  if (!q) return;
+  data.active[i].done = true;
   data.totalQuests = data.totalQuests + 1;
+  data.completed[id] = (data.completed[id] || 0) + 1;
   data.stats[q.stat] = (data.stats[q.stat] || 0) + 1;
   var leveled = addXP(20);
   if (!leveled) playSound("quest");
@@ -274,31 +411,36 @@ function completeQuest(i) {
   draw();
 }
 
-function removeQuest(i) {
-  data.quests.splice(i, 1);
+function setFilter(value) {
+  filter = value;
+  draw();
+}
+
+/* ---------- gates (accept and finish only) ---------- */
+
+function acceptGate(id) {
+  if (!GATE_MAP[id]) return;
+  if (data.gates.indexOf(id) !== -1 || data.gatesDone.indexOf(id) !== -1) return;
+  data.gates.push(id);
   save();
   draw();
 }
 
-/* ---------- gates ---------- */
-
-function addGate() {
-  var box = document.getElementById("newGate");
-  var text = box.value.trim();
-  if (text === "") return;
-  var rank = document.getElementById("gateRank").value;
-  var stat = document.getElementById("gateStat").value;
-  data.gates.push({ text: text, rank: rank, stat: stat });
-  box.value = "";
+function dropGate(id) {
+  var i = data.gates.indexOf(id);
+  if (i === -1) return;
+  data.gates.splice(i, 1);
   save();
   draw();
 }
 
-function clearGate(i) {
-  var g = data.gates[i];
-  if (!g) return;
+function clearGate(id) {
+  var i = data.gates.indexOf(id);
+  var g = GATE_MAP[id];
+  if (i === -1 || !g) return;
   var xp = GATE_XP[g.rank] || 50;
   data.gates.splice(i, 1);
+  data.gatesDone.push(id);
   data.gatesCleared = data.gatesCleared + 1;
   data.stats[g.stat] = (data.stats[g.stat] || 0) + 3;
   notify("GATE CLEARED: +" + xp + " XP, +3 " + g.stat, true);
@@ -310,72 +452,109 @@ function clearGate(i) {
   draw();
 }
 
-function removeGate(i) {
-  data.gates.splice(i, 1);
-  save();
-  draw();
-}
-
 /* ---------- reset ---------- */
 
-function resetAll() {
-  if (!confirm("Delete all progress and start over?")) return;
-  try { localStorage.removeItem("system-data"); } catch (e) {}
-  location.reload();
+async function resetAll() {
+  if (!confirm("Delete all progress on your account and start over?")) return;
+  data = defaultData();
+  data.lastDate = today();
+  await flush();
+  draw();
 }
 
 /* ---------- drawing the screen ---------- */
 
 function draw() {
+  if (!user) return;
   var need = data.level * 100;
-  document.getElementById("level").innerText = data.level;
-  document.getElementById("rank").innerText = getRank();
-  document.getElementById("xp").innerText = data.xp;
-  document.getElementById("need").innerText = need;
-  document.getElementById("streak").innerText = data.streak;
-  document.getElementById("fill").style.width = (data.xp / need * 100) + "%";
-  document.getElementById("gatesCleared").innerText = data.gatesCleared;
-  document.getElementById("soundBtn").innerText = "Sound: " + (data.sound ? "ON" : "OFF");
+
+  setText("playerName", user.displayName || "Player");
+  setText("level", data.level);
+  setText("rank", getRank());
+  setText("xp", data.xp);
+  setText("need", need);
+  setText("streak", data.streak);
+  $("fill").style.width = (data.xp / need * 100) + "%";
+  setText("gatesCleared", data.gatesCleared);
+  setText("activeCount", data.active.length);
+  setText("soundBtn", "Sound: " + (data.sound ? "ON" : "OFF"));
 
   var titleName = "No title yet";
   for (var ti = 0; ti < TITLES.length; ti++) {
     if (TITLES[ti].id === data.equipped) titleName = "[ " + TITLES[ti].name + " ]";
   }
-  document.getElementById("titleLine").innerText = titleName;
+  setText("titleLine", titleName);
 
   for (var n = 0; n < STAT_NAMES.length; n++) {
-    document.getElementById(STAT_NAMES[n]).innerText = data.stats[STAT_NAMES[n]] || 0;
+    setText(STAT_NAMES[n], data.stats[STAT_NAMES[n]] || 0);
   }
 
-  /* daily quests */
-  var html = "";
-  for (var i = 0; i < data.quests.length; i++) {
-    var q = data.quests[i];
-    html += '<div class="quest ' + (q.done ? "done" : "") + '">';
-    html += '<div><span>' + esc(q.text) + '</span><small>+1 ' + q.stat + '</small></div>';
-    html += '<div>';
-    if (!q.done) html += '<button onclick="completeQuest(' + i + ')">Done</button> ';
-    html += '<button onclick="removeQuest(' + i + ')">X</button>';
-    html += '</div></div>';
+  /* today's accepted quests */
+  var ah = "";
+  var activeIds = {};
+  for (var i = 0; i < data.active.length; i++) {
+    var a = data.active[i];
+    var q = QUEST_MAP[a.id];
+    if (!q) continue;
+    activeIds[a.id] = true;
+    ah += '<div class="quest ' + (a.done ? "done" : "") + '">';
+    ah += '<div><span>' + esc(q.text) + '</span><small>+1 ' + q.stat + '</small></div><div>';
+    if (a.done) {
+      ah += '<span class="tag">CLEARED</span>';
+    } else {
+      ah += '<button onclick="completeQuest(\'' + a.id + '\')">Done</button> ';
+      ah += '<button class="ghost" onclick="dropQuest(\'' + a.id + '\')">X</button>';
+    }
+    ah += '</div></div>';
   }
-  document.getElementById("list").innerHTML = html;
+  if (ah === "") {
+    ah = '<p class="hint">No quests accepted yet. Open the Quest Board below and accept some.</p>';
+  }
+  $("activeList").innerHTML = ah;
 
-  /* gates */
+  /* quest board */
+  var bh = "";
+  for (var b = 0; b < QUESTS.length; b++) {
+    var bq = QUESTS[b];
+    if (filter !== "ALL" && bq.stat !== filter) continue;
+    if (activeIds[bq.id]) continue;
+    var times = data.completed[bq.id] || 0;
+    bh += '<div class="row"><div><span>' + esc(bq.text) + '</span>';
+    bh += '<small>+1 ' + bq.stat + (times ? ' | completed ' + times + 'x' : '') + '</small></div>';
+    bh += '<button onclick="acceptQuest(\'' + bq.id + '\')">Accept</button></div>';
+  }
+  if (bh === "") bh = '<p class="hint">Nothing left on the board for this filter.</p>';
+  $("boardList").innerHTML = bh;
+
+  /* accepted gates */
   var gh = "";
   for (var j = 0; j < data.gates.length; j++) {
-    var g = data.gates[j];
-    gh += '<div class="quest">';
-    gh += '<div><span>[' + g.rank + '] ' + esc(g.text) + '</span>';
-    gh += '<small>+' + (GATE_XP[g.rank] || 50) + ' XP, +3 ' + g.stat + '</small></div>';
-    gh += '<div><button onclick="clearGate(' + j + ')">Clear</button> ';
-    gh += '<button onclick="removeGate(' + j + ')">X</button></div></div>';
+    var g = GATE_MAP[data.gates[j]];
+    if (!g) continue;
+    gh += '<div class="quest"><div><span>[' + g.rank + '] ' + esc(g.text) + '</span>';
+    gh += '<small>+' + (GATE_XP[g.rank] || 50) + ' XP, +3 ' + g.stat + '</small></div><div>';
+    gh += '<button onclick="clearGate(\'' + g.id + '\')">Clear</button> ';
+    gh += '<button class="ghost" onclick="dropGate(\'' + g.id + '\')">X</button></div></div>';
   }
-  document.getElementById("gateList").innerHTML = gh;
+  if (gh === "") gh = '<p class="hint">No gate accepted.</p>';
+  $("activeGates").innerHTML = gh;
+
+  /* gate board */
+  var gb = "";
+  for (var k = 0; k < GATES.length; k++) {
+    var gt = GATES[k];
+    if (data.gates.indexOf(gt.id) !== -1 || data.gatesDone.indexOf(gt.id) !== -1) continue;
+    gb += '<div class="row"><div><span>[' + gt.rank + '] ' + esc(gt.text) + '</span>';
+    gb += '<small>+' + (GATE_XP[gt.rank] || 50) + ' XP, +3 ' + gt.stat + '</small></div>';
+    gb += '<button onclick="acceptGate(\'' + gt.id + '\')">Accept</button></div>';
+  }
+  if (gb === "") gb = '<p class="hint">You cleared every gate. New ones will come.</p>';
+  $("gateBoard").innerHTML = gb;
 
   /* titles */
   var th = "";
-  for (var k = 0; k < TITLES.length; k++) {
-    var t = TITLES[k];
+  for (var m = 0; m < TITLES.length; m++) {
+    var t = TITLES[m];
     var has = data.titles.indexOf(t.id) !== -1;
     th += '<div class="row' + (has ? "" : " locked") + '">';
     th += '<div><b>' + (has ? t.name : "???") + '</b><small>' + t.desc + '</small></div>';
@@ -388,14 +567,14 @@ function draw() {
     }
     th += '</div>';
   }
-  document.getElementById("titleList").innerHTML = th;
-  document.getElementById("titleCount").innerText = data.titles.length + "/" + TITLES.length;
+  $("titleList").innerHTML = th;
+  setText("titleCount", data.titles.length + "/" + TITLES.length);
 
   /* shadow army */
   var sh = "";
   var owned = 0;
-  for (var m = 0; m < SHADOWS.length; m++) {
-    var s = SHADOWS[m];
+  for (var p = 0; p < SHADOWS.length; p++) {
+    var s = SHADOWS[p];
     var unlocked = data.level >= s.level;
     if (unlocked) owned++;
     sh += '<div class="row' + (unlocked ? "" : " locked") + '">';
@@ -407,20 +586,33 @@ function draw() {
     }
     sh += '</div>';
   }
-  document.getElementById("shadowList").innerHTML = sh;
-  document.getElementById("shadowCount").innerText = owned + "/" + SHADOWS.length;
+  $("shadowList").innerHTML = sh;
+  setText("shadowCount", owned + "/" + SHADOWS.length);
 }
 
-/* ---------- start ---------- */
+/* ---------- connect buttons in the page to the code ---------- */
 
-load();
-dailyCheck();
-checkTitles();
-save();
-draw();
+Object.assign(window, {
+  signIn: signIn,
+  doSignOut: doSignOut,
+  acceptQuest: acceptQuest,
+  dropQuest: dropQuest,
+  completeQuest: completeQuest,
+  acceptGate: acceptGate,
+  dropGate: dropGate,
+  clearGate: clearGate,
+  setFilter: setFilter,
+  equipTitle: equipTitle,
+  toggleSound: toggleSound,
+  resetAll: resetAll,
+  closeLevelUp: closeLevelUp
+});
 
 document.addEventListener("visibilitychange", function () {
-  if (!document.hidden) {
+  if (!user || !loaded) return;
+  if (document.hidden) {
+    flush();
+  } else {
     dailyCheck();
     checkTitles();
     save();
