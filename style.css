@@ -20,6 +20,58 @@ h1, h2 {
   margin-top: 0;
 }
 
+h2 {
+  font-size: 18px;
+}
+
+summary {
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-align: center;
+  cursor: pointer;
+}
+
+details[open] summary {
+  margin-bottom: 15px;
+}
+
+.center {
+  text-align: center;
+}
+
+.error {
+  color: #ff8c8c;
+  text-align: center;
+  font-size: 14px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+.topbar small {
+  display: block;
+  opacity: 0.6;
+  margin-top: 3px;
+}
+
+.titleline {
+  text-align: center;
+  color: #ffd86b;
+  letter-spacing: 2px;
+  margin-top: -10px;
+}
+
+.hint {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
 .bar {
   background: #0a1633;
   border: 1px solid #2a8cff;
@@ -27,6 +79,11 @@ h1, h2 {
   border-radius: 8px;
   overflow: hidden;
   margin-top: 8px;
+  transition: box-shadow 0.3s;
+}
+
+.bar.pulse {
+  box-shadow: 0 0 18px #6fb7ff;
 }
 
 #fill {
@@ -50,7 +107,7 @@ h1, h2 {
   padding: 10px;
 }
 
-input, select {
+select {
   width: 100%;
   box-sizing: border-box;
   padding: 10px;
@@ -72,13 +129,24 @@ button {
   font-weight: bold;
 }
 
+button.wide {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+button.ghost {
+  background: transparent;
+  color: #9fd4ff;
+  border: 1px solid #2a8cff;
+}
+
 button.danger {
   background: #8b1a1a;
   color: #ffd6d6;
   width: 100%;
 }
 
-.quest {
+.quest, .row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -87,9 +155,10 @@ button.danger {
   gap: 10px;
 }
 
-.quest small {
+.quest small, .row small {
   display: block;
   opacity: 0.6;
+  margin-top: 3px;
 }
 
 .done span {
@@ -97,18 +166,74 @@ button.danger {
   opacity: 0.5;
 }
 
+.locked {
+  opacity: 0.45;
+}
+
+.tag {
+  color: #ffd86b;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.notices {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
 .notice {
+  background: #1a0508;
   border: 2px solid #ff3b3b;
   box-shadow: 0 0 20px #ff3b3b;
   color: #ffb3b3;
   padding: 15px;
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
 .notice.good {
+  background: #050a1a;
   border-color: #2a8cff;
   box-shadow: 0 0 20px #2a8cff;
   color: #9fd4ff;
+}
+
+.levelup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(5, 10, 26, 0.94);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  text-align: center;
+}
+
+.levelup-box {
+  border: 2px solid #2a8cff;
+  padding: 30px 40px;
+  border-radius: 10px;
+  animation: popIn 0.5s ease-out, glow 1.5s ease-in-out infinite alternate;
+}
+
+.levelup-box .big {
+  font-size: 28px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 20px #2a8cff; }
+  to { box-shadow: 0 0 60px #6fb7ff; }
 }
