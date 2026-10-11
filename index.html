@@ -9,10 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="System">
 <meta name="theme-color" content="#050a1a">
 <link rel="apple-touch-icon" href="icon.png?v=2">
-<link rel="icon" type="image/png" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png?v=2">
 <link rel="manifest" href="manifest.json">
 <title>SYSTEM</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -27,77 +27,90 @@
     </div>
   </div>
 
-  <div class="window">
+  <div id="loading" class="window">
     <h1>SYSTEM</h1>
-    <p class="titleline" id="titleLine"></p>
-    <p>Player Rank: <b id="rank">E-Rank</b></p>
-    <p>Level: <b id="level">1</b></p>
-    <p>XP: <b id="xp">0</b> / <b id="need">100</b></p>
-    <div class="bar" id="bar"><div id="fill"></div></div>
-    <p>Streak: <b id="streak">0</b> day(s)</p>
+    <p class="center">Loading...</p>
   </div>
 
-  <div class="window">
-    <h2>STATUS</h2>
-    <div class="stats">
-      <div>STR <b id="STR">0</b></div>
-      <div>AGI <b id="AGI">0</b></div>
-      <div>INT <b id="INT">0</b></div>
-      <div>VIT <b id="VIT">0</b></div>
+  <div id="loginScreen" class="window" style="display:none;">
+    <h1>SYSTEM</h1>
+    <p class="center">Sign in to load your Player data.</p>
+    <button class="wide" onclick="signIn()">Sign in with Google</button>
+    <p id="loginError" class="error"></p>
+  </div>
+
+  <div id="app" style="display:none;">
+
+    <div class="topbar">
+      <div><b id="playerName"></b><small id="saveStatus"></small></div>
+      <button class="ghost" onclick="doSignOut()">Sign out</button>
     </div>
+
+    <div class="window">
+      <h1>SYSTEM</h1>
+      <p class="titleline" id="titleLine"></p>
+      <p>Player Rank: <b id="rank">E-Rank</b></p>
+      <p>Level: <b id="level">1</b></p>
+      <p>XP: <b id="xp">0</b> / <b id="need">100</b></p>
+      <div class="bar" id="bar"><div id="fill"></div></div>
+      <p>Streak: <b id="streak">0</b> day(s)</p>
+    </div>
+
+    <div class="window">
+      <h2>STATUS</h2>
+      <div class="stats">
+        <div>STR <b id="STR">0</b></div>
+        <div>AGI <b id="AGI">0</b></div>
+        <div>INT <b id="INT">0</b></div>
+        <div>VIT <b id="VIT">0</b></div>
+      </div>
+    </div>
+
+    <div class="window">
+      <h2>TODAY'S QUESTS</h2>
+      <p class="hint">Accepted: <b id="activeCount">0</b> / 10. Quests you skip cost 15 XP each at the next day.</p>
+      <div id="activeList"></div>
+    </div>
+
+    <details class="window" open>
+      <summary>QUEST BOARD</summary>
+      <select id="filterStat" onchange="setFilter(this.value)">
+        <option value="ALL">All quests</option>
+        <option value="STR">Strength (STR)</option>
+        <option value="AGI">Agility (AGI)</option>
+        <option value="INT">Intelligence (INT)</option>
+        <option value="VIT">Vitality (VIT)</option>
+      </select>
+      <div id="boardList"></div>
+    </details>
+
+    <details class="window">
+      <summary>GATES</summary>
+      <p class="hint">Big one-time challenges. +3 to a stat and lots of XP.</p>
+      <div id="activeGates"></div>
+      <h2>Available Gates</h2>
+      <div id="gateBoard"></div>
+      <p class="hint">Gates cleared: <b id="gatesCleared">0</b></p>
+    </details>
+
+    <details class="window">
+      <summary>TITLES (<span id="titleCount">0</span>)</summary>
+      <div id="titleList"></div>
+    </details>
+
+    <details class="window">
+      <summary>SHADOW ARMY (<span id="shadowCount">0</span>)</summary>
+      <div id="shadowList"></div>
+    </details>
+
+    <div class="window">
+      <button id="soundBtn" class="wide" onclick="toggleSound()">Sound: ON</button>
+      <button class="danger" onclick="resetAll()">Reset Everything</button>
+    </div>
+
   </div>
 
-  <div class="window">
-    <h2>DAILY QUESTS</h2>
-    <input id="newQuest" placeholder="e.g. 50 push-ups">
-    <select id="questStat">
-      <option value="STR">Strength (STR)</option>
-      <option value="AGI">Agility (AGI)</option>
-      <option value="INT">Intelligence (INT)</option>
-      <option value="VIT">Vitality (VIT)</option>
-    </select>
-    <button onclick="addQuest()">Add Quest</button>
-    <div id="list"></div>
-  </div>
-
-  <div class="window">
-    <h2>GATES</h2>
-    <p class="hint">Big one-time challenges. Harder gates give more XP and +3 to a stat.</p>
-    <input id="newGate" placeholder="e.g. Run 5km">
-    <select id="gateRank">
-      <option value="E">E-Rank Gate (+50 XP)</option>
-      <option value="D">D-Rank Gate (+100 XP)</option>
-      <option value="C">C-Rank Gate (+150 XP)</option>
-      <option value="B">B-Rank Gate (+250 XP)</option>
-      <option value="A">A-Rank Gate (+400 XP)</option>
-      <option value="S">S-Rank Gate (+600 XP)</option>
-    </select>
-    <select id="gateStat">
-      <option value="STR">Strength (STR)</option>
-      <option value="AGI">Agility (AGI)</option>
-      <option value="INT">Intelligence (INT)</option>
-      <option value="VIT">Vitality (VIT)</option>
-    </select>
-    <button onclick="addGate()">Open Gate</button>
-    <div id="gateList"></div>
-    <p class="hint">Gates cleared: <b id="gatesCleared">0</b></p>
-  </div>
-
-  <details class="window">
-    <summary>TITLES (<span id="titleCount">0</span>)</summary>
-    <div id="titleList"></div>
-  </details>
-
-  <details class="window">
-    <summary>SHADOW ARMY (<span id="shadowCount">0</span>)</summary>
-    <div id="shadowList"></div>
-  </details>
-
-  <div class="window">
-    <button id="soundBtn" onclick="toggleSound()">Sound: ON</button>
-    <button class="danger" onclick="resetAll()">Reset Everything</button>
-  </div>
-
-<script src="script.js"></script>
+<script src="quests.js?v=3"></script>
+<script type="module" src="script.js?v=3"></script>
 </body>
 </html>
